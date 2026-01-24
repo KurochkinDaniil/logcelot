@@ -1,0 +1,99 @@
+@startuml
+' Logcelot architecture (Kappa + DLQ recovery)
+' Render: plantuml -tpng logcelot_arch.puml
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam RoundCorner 12
+skinparam ArrowColor #4A4A4A
+skinparam ArrowThickness 1
+skinparam defaultFontName Arial
+skinparam defaultFontSize 14
+skinparam rectangle {
+  BorderColor #6B6B6B
+  BackgroundColor #FFFFFF
+}
+skinparam package {
+  BorderColor #B0B0B0
+  BackgroundColor #FAFAFA
+}
+
+title Logcelot — архитектура (Kappa + DLQ recovery)
+
+' ---------- Ingestion ----------
+package "Ingestion Layer" as ingestion {
+  rectangle "HTTP API\n/logs" as api_in
+  rectangle "Kafka Streaming Log Generator\n(synthetic)" as gen
+  rectangle "File Loader (API or UI)\n" as loader
+}
+
+' ---------- Processing ----------
+package "Processing Layer" as processing {
+  rectangle "FastAPI API\n(validation + parsing)" as api
+  rectangle "Kafka Cluster\n(3 brokers, KRaft)\n\nTopics:\n- logs.raw\n- logs.dead_letter" as kafka
+  rectangle "Worker Pool\n(3 consumers)\nGroup: logcelot-consumer\nBatch: 1000 logs or 5s\nManual commit after INSERT" as workers
+}
+
+' ---------- Storage ----------
+package "Storage Layer" as storage {
+  rectangle "Nginx LB\n:8125" as ch_lb
+  rectangle "ClickHouse HA\n(2 nodes)\n- logs_local (ReplicatedMergeTree)\n- logs (Distributed)" as ch
+  rectangle "ClickHouse Keeper\n(3 nodes)\nCoordination" as keeper
+}
+
+' ---------- Orchestration ----------
+package "Orchestration" as orchestration {
+  rectangle "Airflow\nDAG: dlq_triage_replay\n\n1) sample DLQ\n2) classify\n3) ClickHouse signals\n4) replay to logs.raw\n5) report" as airflow
+}
+
+' ---------- Observability ----------
+package "Observability Layer" as obs {
+  rectangle "Prometheus\n(scrape API/Workers + exporters)" as prom
+  rectangle "Grafana\n(technical dashboards)\n:3000" as grafana
+}
+
+' ---------- Analytics ----------
+package "Analytics Layer" as analytics {
+  rectangle "Apache Superset\n(BI / analytics)\n:8088" as superset
+}
+
+' ========== Data flow (solid) ==========
+gen --> api : HTTP events
+loader --> api : Load file -> events
+api_in --> api : Client POST /logs
+
+api --> kafka : produce\nlogs.raw
+kafka --> workers : consume\nlogs.raw
+workers --> ch_lb : bulk INSERT
+ch_lb --> ch
+
+' ========== Error/DLQ (dashed, red) ==========
+workers -[#B00020,dashed]-> kafka : errors ->\nlogs.dead_letter
+
+' ========== Airflow DLQ recovery ==========
+kafka -[#B00020,dashed]-> airflow : read sample\nlogs.dead_letter
+airflow -[#1F6FEB,dashed]-> kafka : replay ->\nlogs.raw
+
+' ========== HA coordination ==========
+ch -[#6B6B6B]-> keeper : Replication\ncoordination
+
+' ========== Analytics ==========
+superset --> ch_lb : SQL queries
+
+' ========== Observability (thin) ==========
+api -[#2F6FEE]-> prom : /metrics
+workers -[#2F6FEE]-> prom : /metrics
+prom --> grafana : dashboards
+ch_lb -[#2F6FEE]-> prom : blackbox / ping
+ch -[#2F6FEE]-> prom : exporter
+
+' ---------- Legend ----------
+legend right
+  |= Тип линии |= Значение |
+  | Сплошная стрелка | Data flow |
+  | Пунктир (красный) | Error/DLQ |
+  | Тонкая (синяя) | Metrics |
+endlegend
+
+' Layout hints
+left to right direction
+@enduml

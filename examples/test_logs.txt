@@ -1,0 +1,10 @@
+127.0.0.1 - frank [20/Jan/2024:13:55:36 -0700] "GET /apache_pb.gif HTTP/1.0" 200 2326
+192.168.1.100 - - [20/Jan/2024:13:56:12 -0700] "POST /api/login HTTP/1.1" 200 1234
+10.0.0.5 - admin [20/Jan/2024:13:57:45 -0700] "GET /api/users/12345 HTTP/1.1" 200 5678
+172.16.0.10 - - [20/Jan/2024:13:58:30 -0700] "POST /api/orders HTTP/1.1" 201 987
+192.168.1.50 - john [20/Jan/2024:13:59:15 -0700] "DELETE /api/cart/67890 HTTP/1.1" 204 0
+10.0.0.15 - - [20/Jan/2024:14:00:00 -0700] "GET /health HTTP/1.0" 200 15
+172.16.0.20 - - [20/Jan/2024:14:01:30 -0700] "POST /api/payments HTTP/1.1" 500 234
+192.168.1.75 - alice [20/Jan/2024:14:02:45 -0700] "PUT /api/profile HTTP/1.1" 200 456
+10.0.0.25 - - [20/Jan/2024:14:03:15 -0700] "GET /api/products?category=electronics HTTP/1.1" 200 8765
+172.16.0.30 - - [20/Jan/2024:14:04:00 -0700] "POST /api/auth/logout HTTP/1.1" 401 123

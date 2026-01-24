@@ -1,0 +1,11 @@
+{
+  "source": "file",
+  "source_service": "web-app",
+  "level": "INFO",
+  "message": "Application started successfully",
+  "payload": {
+    "version": "2.1.0",
+    "environment": "production",
+    "startup_time_ms": 1523
+  }
+}

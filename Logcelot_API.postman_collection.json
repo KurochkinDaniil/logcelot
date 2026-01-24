@@ -1,0 +1,1165 @@
+{
+	"info": {
+		"_postman_id": "logcelot-api-2026",
+		"name": "Logcelot API - Log Collection System",
+		"description": "Complete API collection for Logcelot log collection system (Kappa Architecture).\n\n**Features:**\n- Async log ingestion (Kafka)\n- Multiple formats: JSON, Syslog RFC5424, CLF\n- Full-text search with filters\n- ClickHouse storage with HA\n- Prometheus metrics\n\n**Quick Start:**\n1. Start infrastructure: `make up`\n2. Wait 30 seconds for services to be healthy\n3. Run folder: `00 - Setup` (health check)\n4. Run folder: `10 - Ingestion` (valid logs)\n5. Wait 5-10 seconds for consumer processing\n6. Run folder: `30 - Search` (query logs)\n\n**Base URL:** http://localhost:8000\n**Swagger:** http://localhost:8000/docs\n**Grafana:** http://localhost:3000 (admin/admin)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "00 - Setup",
+			"description": "Service status and health checks",
+			"item": [
+				{
+					"name": "API Root",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is JSON', () => {",
+									"  pm.response.to.be.json;",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Has message', () => {",
+									"  pm.expect(data).to.have.property('message');",
+									"  pm.expect(data.message).to.include('Logcelot');",
+									"});",
+									"",
+									"pm.test('Has version', () => {",
+									"  pm.expect(data).to.have.property('version');",
+									"});",
+									"",
+									"pm.test('Architecture is Kappa', () => {",
+									"  pm.expect(data).to.have.property('architecture');",
+									"  pm.expect(data.architecture).to.include('Kappa');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/health"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200 or 503', () => {",
+									"  pm.expect([200, 503]).to.include(pm.response.code);",
+									"});",
+									"",
+									"pm.test('Response is JSON', () => {",
+									"  pm.response.to.be.json;",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Has service name', () => {",
+									"  pm.expect(data).to.have.property('service');",
+									"  pm.expect(data.service).to.eql('logcelot-api');",
+									"});",
+									"",
+									"pm.test('Has status', () => {",
+									"  pm.expect(data).to.have.property('status');",
+									"  pm.expect(['healthy', 'degraded']).to.include(data.status);",
+									"});",
+									"",
+									"pm.test('Has Kafka status', () => {",
+									"  pm.expect(data).to.have.property('kafka');",
+									"});",
+									"",
+									"pm.test('Has ClickHouse status', () => {",
+									"  pm.expect(data).to.have.property('clickhouse');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"  console.log('✅ All systems healthy');",
+									"} else {",
+									"  console.log('⚠️ System degraded:', data);",
+									"}"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Prometheus Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": "{{base_url}}/metrics"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is Prometheus format', () => {",
+									"  pm.expect(pm.response.text()).to.include('# TYPE');",
+									"  pm.expect(pm.response.text()).to.include('logcelot_');",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "10 - Ingestion (JSON)",
+			"description": "Valid JSON log ingestion",
+			"item": [
+				{
+					"name": "Single INFO log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"payment-service\",\n  \"level\": \"INFO\",\n  \"message\": \"Payment processed successfully\",\n  \"payload\": {\n    \"user_id\": \"12345\",\n    \"amount\": 99.99,\n    \"currency\": \"USD\",\n    \"transaction_id\": \"txn_abc123\",\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202 Accepted', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Response is JSON', () => {",
+									"  pm.response.to.be.json;",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Status is queued', () => {",
+									"  pm.expect(data.status).to.eql('queued');",
+									"});",
+									"",
+									"pm.test('Count is 1', () => {",
+									"  pm.expect(data.count).to.eql(1);",
+									"});",
+									"",
+									"pm.test('Has Kafka metadata', () => {",
+									"  pm.expect(data).to.have.property('kafka_topic');",
+									"  pm.expect(data).to.have.property('kafka_partition');",
+									"  pm.expect(data).to.have.property('kafka_offset');",
+									"  pm.expect(data).to.have.property('log_id');",
+									"});",
+									"",
+									"console.log('📨 Log queued:', data);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Single ERROR log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"payment-service\",\n  \"level\": \"ERROR\",\n  \"message\": \"Payment processing failed: database timeout\",\n  \"payload\": {\n    \"user_id\": \"67890\",\n    \"error_type\": \"DatabaseTimeoutException\",\n    \"http_status_code\": 504,\n    \"duration_ms\": 5000,\n    \"trace_id\": \"{{trace_id}}\",\n    \"stack_trace\": \"at PaymentProcessor.process()\\n  at PaymentController.handleRequest()\"\n  }\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"pm.test('Status is queued', () => {",
+									"  pm.expect(data.status).to.eql('queued');",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Single WARN log (normalized)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"auth-service\",\n  \"level\": \"WARNING\",\n  \"message\": \"Multiple failed login attempts detected\",\n  \"payload\": {\n    \"user_id\": \"11111\",\n    \"ip_address\": \"192.168.1.100\",\n    \"attempts\": 5,\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"console.log('⚠️ WARNING normalized to WARN in storage');"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Single DEBUG log",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"cache-service\",\n  \"level\": \"DEBUG\",\n  \"message\": \"Cache hit: user_profile_12345\",\n  \"payload\": {\n    \"cache_key\": \"user_profile_12345\",\n    \"ttl_seconds\": 300,\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "11 - Ingestion (Batch)",
+			"description": "Batch log ingestion (1-1000 logs)",
+			"item": [
+				{
+					"name": "Batch Mixed Levels (5 logs)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logs\": [\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"INFO\",\n      \"message\": \"Request received: GET /api/users\",\n      \"payload\": {\n        \"http_method\": \"GET\",\n        \"http_path\": \"/api/users\",\n        \"http_status_code\": 200,\n        \"duration_ms\": 45,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"INFO\",\n      \"message\": \"Request received: POST /api/orders\",\n      \"payload\": {\n        \"http_method\": \"POST\",\n        \"http_path\": \"/api/orders\",\n        \"http_status_code\": 201,\n        \"duration_ms\": 120,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"ERROR\",\n      \"message\": \"Request failed: GET /api/products/999\",\n      \"payload\": {\n        \"http_method\": \"GET\",\n        \"http_path\": \"/api/products/999\",\n        \"http_status_code\": 404,\n        \"error_type\": \"ResourceNotFoundException\",\n        \"duration_ms\": 15,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"worker-service\",\n      \"level\": \"WARN\",\n      \"message\": \"Task execution slow: process_order\",\n      \"payload\": {\n        \"task_name\": \"process_order\",\n        \"duration_ms\": 3500,\n        \"threshold_ms\": 1000,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"cache-service\",\n      \"level\": \"DEBUG\",\n      \"message\": \"Cache hit: user_profile_12345\",\n      \"payload\": {\n        \"cache_key\": \"user_profile_12345\",\n        \"ttl_seconds\": 300,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    }\n  ]\n}"
+						},
+						"url": "{{base_url}}/logs/batch"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Status is queued', () => {",
+									"  pm.expect(data.status).to.eql('queued');",
+									"});",
+									"",
+									"pm.test('Count is 5', () => {",
+									"  pm.expect(data.count).to.eql(5);",
+									"});",
+									"",
+									"console.log('📦 Batch queued:', data.count, 'logs');"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Batch Large (100 logs)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logs\": [\n    {{#repeat 100}}\n    {\n      \"source\": \"http\",\n      \"source_service\": \"load-test-service\",\n      \"level\": \"INFO\",\n      \"message\": \"Load test log entry {{@index}}\",\n      \"payload\": {\n        \"index\": {{@index}},\n        \"timestamp\": \"{{timestamp}}\",\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    }{{#unless @last}},{{/unless}}\n    {{/repeat}}\n  ]\n}"
+						},
+						"url": "{{base_url}}/logs/batch"
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Generate 100 logs dynamically",
+									"const logs = [];",
+									"for (let i = 0; i < 100; i++) {",
+									"  logs.push({",
+									"    source: 'http',",
+									"    source_service: 'load-test-service',",
+									"    level: 'INFO',",
+									"    message: `Load test log entry ${i}`,",
+									"    payload: {",
+									"      index: i,",
+									"      timestamp: new Date().toISOString(),",
+									"      trace_id: pm.variables.get('trace_id')",
+									"    }",
+									"  });",
+									"}",
+									"",
+									"pm.variables.set('batch_body', JSON.stringify({ logs }));"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Count is 100', () => {",
+									"  pm.expect(data.count).to.eql(100);",
+									"});",
+									"",
+									"console.log('📦 Large batch queued:', data.count, 'logs');"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "12 - Ingestion (Raw Formats)",
+			"description": "Syslog RFC5424 and CLF format ingestion",
+			"item": [
+				{
+					"name": "Syslog RFC5424 - Single",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "<134>1 2026-01-23T12:00:00.000Z webserver01.example.com nginx 1234 - - User login successful"
+						},
+						"url": {
+							"raw": "{{base_url}}/logs/raw?format=syslog&source_service=nginx-webserver",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "raw"],
+							"query": [
+								{
+									"key": "format",
+									"value": "syslog"
+								},
+								{
+									"key": "source_service",
+									"value": "nginx-webserver"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"pm.test('Status is queued', () => {",
+									"  pm.expect(data.status).to.eql('queued');",
+									"});",
+									"",
+									"console.log('📄 Syslog parsed and queued');"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "CLF - Success Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "192.168.1.100 - john [23/Jan/2026:12:00:00 +0000] \"GET /api/users HTTP/1.1\" 200 1234"
+						},
+						"url": {
+							"raw": "{{base_url}}/logs/raw?format=clf&source_service=apache-webserver",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "raw"],
+							"query": [
+								{
+									"key": "format",
+									"value": "clf"
+								},
+								{
+									"key": "source_service",
+									"value": "apache-webserver"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"pm.test('Status is queued', () => {",
+									"  pm.expect(data.status).to.eql('queued');",
+									"});",
+									"",
+									"console.log('📄 CLF parsed and queued');"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "CLF - Error Request (404)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "192.168.1.100 - john [23/Jan/2026:12:05:00 +0000] \"GET /api/nonexistent HTTP/1.1\" 404 512"
+						},
+						"url": {
+							"raw": "{{base_url}}/logs/raw?format=clf&source_service=apache-webserver",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "raw"],
+							"query": [
+								{
+									"key": "format",
+									"value": "clf"
+								},
+								{
+									"key": "source_service",
+									"value": "apache-webserver"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "20 - Ingestion (Invalid)",
+			"description": "Negative test cases for validation",
+			"item": [
+				{
+					"name": "Invalid - Missing required fields",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\"\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422 Unprocessable Entity', () => {",
+									"  pm.response.to.have.status(422);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"pm.test('Has validation detail', () => {",
+									"  pm.expect(data).to.have.property('detail');",
+									"});",
+									"",
+									"console.log('❌ Validation failed (expected):', data.detail);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Invalid - Level not allowed",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"test-api\",\n  \"level\": \"INVALID_LEVEL\",\n  \"message\": \"Test message\"\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422', () => {",
+									"  pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Invalid - Payload wrong type",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"test-api\",\n  \"level\": \"INFO\",\n  \"message\": \"Test\",\n  \"payload\": \"not-a-dict-should-be-object\"\n}"
+						},
+						"url": "{{base_url}}/logs"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422', () => {",
+									"  pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Invalid - Empty batch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logs\": []\n}"
+						},
+						"url": "{{base_url}}/logs/batch"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 422', () => {",
+									"  pm.response.to.have.status(422);",
+									"});"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Invalid - Malformed Syslog",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "text/plain"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "This is not a valid syslog message at all"
+						},
+						"url": {
+							"raw": "{{base_url}}/logs/raw?format=syslog",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "raw"],
+							"query": [
+								{
+									"key": "format",
+									"value": "syslog"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 400 Bad Request', () => {",
+									"  pm.response.to.have.status(400);",
+									"});",
+									"",
+									"console.log('❌ Parse error (expected) - message sent to DLQ');"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "30 - Search",
+			"description": "Log search with filters and pagination",
+			"item": [
+				{
+					"name": "Search - All logs (default)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?limit=20",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is JSON', () => {",
+									"  pm.response.to.be.json;",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Has total', () => {",
+									"  pm.expect(data).to.have.property('total');",
+									"});",
+									"",
+									"pm.test('Has items array', () => {",
+									"  pm.expect(data).to.have.property('items');",
+									"  pm.expect(data.items).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('Has query_time_ms', () => {",
+									"  pm.expect(data).to.have.property('query_time_ms');",
+									"});",
+									"",
+									"console.log(`📊 Found ${data.total} logs, returned ${data.items.length} items in ${data.query_time_ms}ms`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - Filter by service",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?source_service=payment-service&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "source_service",
+									"value": "payment-service"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('All results are from payment-service', () => {",
+									"  data.items.forEach(item => {",
+									"    pm.expect(item.source_service).to.eql('payment-service');",
+									"  });",
+									"});",
+									"",
+									"console.log(`📊 Found ${data.total} logs from payment-service`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - Filter by level (ERROR)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?level=ERROR&limit=100",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "level",
+									"value": "ERROR"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('All results are ERROR level', () => {",
+									"  data.items.forEach(item => {",
+									"    pm.expect(item.level).to.eql('ERROR');",
+									"  });",
+									"});",
+									"",
+									"console.log(`🔴 Found ${data.total} ERROR logs`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - Full-text search",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?query=payment&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "query",
+									"value": "payment"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Results contain search term', () => {",
+									"  data.items.forEach(item => {",
+									"    const found = item.message.toLowerCase().includes('payment') || ",
+									"                  item.source_service.toLowerCase().includes('payment');",
+									"    pm.expect(found).to.be.true;",
+									"  });",
+									"});",
+									"",
+									"console.log(`🔍 Full-text search found ${data.total} results`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - By trace_id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?trace_id={{trace_id}}&limit=100",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "trace_id",
+									"value": "{{trace_id}}"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Results are for same trace', () => {",
+									"  const traceId = pm.variables.get('trace_id');",
+									"  data.items.forEach(item => {",
+									"    pm.expect(item.trace_id).to.eql(traceId);",
+									"  });",
+									"});",
+									"",
+									"console.log(`🔗 Trace distributed across ${data.total} logs`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - Combined filters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?source_service=payment-service&level=ERROR&query=timeout&limit=50",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "source_service",
+									"value": "payment-service"
+								},
+								{
+									"key": "level",
+									"value": "ERROR"
+								},
+								{
+									"key": "query",
+									"value": "timeout"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"console.log(`🔍 Combined filters found ${data.total} results`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Search - Pagination",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/logs/search?limit=10&offset=20",
+							"host": ["{{base_url}}"],
+							"path": ["logs", "search"],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 200', () => {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"",
+									"pm.test('Offset is 20', () => {",
+									"  pm.expect(data.offset).to.eql(20);",
+									"});",
+									"",
+									"pm.test('Returns up to 10 items', () => {",
+									"  pm.expect(data.items.length).to.be.at.most(10);",
+									"});",
+									"",
+									"console.log(`📄 Page 3 (offset 20): ${data.items.length} items of ${data.total} total`);"
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "40 - Demo Scenarios",
+			"description": "End-to-end demo scenarios for presentation",
+			"item": [
+				{
+					"name": "Scenario: Payment Flow (distributed trace)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logs\": [\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"INFO\",\n      \"message\": \"Payment request received\",\n      \"payload\": {\n        \"user_id\": \"1001\",\n        \"amount\": 99.99,\n        \"trace_id\": \"{{trace_id}}\",\n        \"span_id\": \"span-001\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"payment-service\",\n      \"level\": \"INFO\",\n      \"message\": \"Validating payment details\",\n      \"payload\": {\n        \"user_id\": \"1001\",\n        \"duration_ms\": 50,\n        \"trace_id\": \"{{trace_id}}\",\n        \"span_id\": \"span-002\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"payment-service\",\n      \"level\": \"INFO\",\n      \"message\": \"Calling payment gateway\",\n      \"payload\": {\n        \"gateway\": \"stripe\",\n        \"duration_ms\": 200,\n        \"trace_id\": \"{{trace_id}}\",\n        \"span_id\": \"span-003\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"payment-service\",\n      \"level\": \"INFO\",\n      \"message\": \"Payment processed successfully\",\n      \"payload\": {\n        \"transaction_id\": \"txn_abc123\",\n        \"duration_ms\": 250,\n        \"trace_id\": \"{{trace_id}}\",\n        \"span_id\": \"span-004\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"notification-service\",\n      \"level\": \"INFO\",\n      \"message\": \"Payment confirmation email sent\",\n      \"payload\": {\n        \"user_id\": \"1001\",\n        \"email\": \"user@example.com\",\n        \"trace_id\": \"{{trace_id}}\",\n        \"span_id\": \"span-005\"\n      }\n    }\n  ]\n}"
+						},
+						"url": "{{base_url}}/logs/batch"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"const data = pm.response.json();",
+									"console.log(`✅ Distributed trace sent: ${data.count} spans`);",
+									"console.log(`   Trace ID: ${pm.variables.get('trace_id')}`);",
+									"console.log(`   Query: /logs/search?trace_id=${pm.variables.get('trace_id')}`);"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Scenario: Error Spike (10 errors)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"logs\": [\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}},\n    {\"source\": \"http\", \"source_service\": \"database-service\", \"level\": \"ERROR\", \"message\": \"Connection timeout\", \"payload\": {\"error_type\": \"TimeoutException\"}}\n  ]\n}"
+						},
+						"url": "{{base_url}}/logs/batch"
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status code is 202', () => {",
+									"  pm.response.to.have.status(202);",
+									"});",
+									"",
+									"console.log('🔴 Error spike simulated: 10 TimeoutException errors');",
+									"console.log('   Check Grafana dashboard for anomaly detection');"
+								]
+							}
+						}
+					]
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Generate unique trace_id for each collection run",
+					"if (!pm.variables.has('trace_id') || !pm.variables.get('trace_id')) {",
+					"  const timestamp = Date.now();",
+					"  const random = Math.random().toString(36).substring(2, 8);",
+					"  pm.variables.set('trace_id', `trace-${timestamp}-${random}`);",
+					"  console.log('🔖 Generated trace_id:', pm.variables.get('trace_id'));",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8000",
+			"type": "string"
+		},
+		{
+			"key": "trace_id",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
