@@ -1,0 +1,10 @@
+<134>1 2024-01-20T10:30:00Z web-server nginx 1234 ID47 - GET /api/users 200 OK
+<134>1 2024-01-20T10:31:15Z app-server auth-service 5678 ID48 - User authentication successful
+<165>1 2024-01-20T10:32:30Z db-server postgres 9012 ID49 - Connection timeout after 30s
+<134>1 2024-01-20T10:33:45Z app-server payment-service 3456 ID50 - Payment processed: $99.99
+<163>1 2024-01-20T10:35:00Z cache-server redis 7890 ID51 - Cache miss for key: user:12345
+<131>1 2024-01-20T10:36:15Z app-server order-service 2345 ID52 [meta order_id="12345" status="completed"] Order fulfilled successfully
+<139>1 2024-01-20T10:37:30Z lb-01 nginx 6789 ID53 - Health check passed for backend: api-01
+<165>1 2024-01-20T10:38:45Z app-server notification-service 4567 ID54 - Failed to send email notification
+<134>1 2024-01-20T10:40:00Z monitoring prometheus 8901 ID55 - Metrics scraped: 1523 time series
+<131>1 2024-01-20T10:41:15Z app-server inventory-service 5432 ID56 [meta sku="PROD-123" stock="150"] Stock level updated
