@@ -33,12 +33,6 @@ up: ## Запустить всю инфраструктуру
 	@echo "  DLQ + DAG demo:    make demo-dlq"
 	@echo "  Запуск теста:      make load-test"
 	@echo ""
-	@echo "Superset (аналитика):"
-	@echo "  1. Откройте http://localhost:8088 (admin/admin)"
-	@echo "  2. Добавьте ClickHouse: Settings → Database Connections → + Database"
-	@echo "     URI: clickhousedb://logcelot_user:logcelot_pass@clickhouse-lb:8123/logcelot"
-	@echo "  3. Создайте дашборды: infrastructure/superset/DASHBOARDS.md"
-	@echo ""
 
 down: ## Остановить всю инфраструктуру
 	@echo "Остановка Logcelot"

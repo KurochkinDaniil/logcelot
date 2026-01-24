@@ -532,16 +532,14 @@ services:
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
       - prometheus
-      - clickhouse-lb
     networks:
       - logcelot-network
+    restart: unless-stopped
 
   postgres-airflow:
     image: postgres:15
