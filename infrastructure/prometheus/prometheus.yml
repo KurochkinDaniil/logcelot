@@ -1,0 +1,68 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Logcelot services
+  - job_name: 'logcelot-api'
+    static_configs:
+      - targets: ['api:8000']
+    metrics_path: '/metrics'
+  
+  - job_name: 'logcelot-worker'
+    static_configs:
+      - targets: 
+          - 'worker-1:8000'
+          - 'worker-2:8000'
+    metrics_path: '/metrics'
+  
+  # Kafka metrics
+  - job_name: 'kafka-exporter'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+  
+  # ClickHouse metrics
+  - job_name: 'clickhouse-exporter'
+    static_configs:
+      - targets: ['clickhouse-exporter:9116']
+  
+  # Blackbox exporter - HTTP health checks
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_health_check]
+    static_configs:
+      - targets:
+          - http://api:8000/health
+          - http://grafana:3000/api/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+  
+  # Blackbox exporter - TCP connectivity checks
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - clickhouse-lb:8123
+          - kafka-1:29092
+          - kafka-2:29092
+          - kafka-3:29092
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+  
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

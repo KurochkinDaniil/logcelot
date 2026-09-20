@@ -1,0 +1,771 @@
+version: '3.8'
+
+services:
+  kafka-1:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-1
+    container_name: logcelot-kafka-1
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-1:29092,PLAINTEXT_HOST://0.0.0.0:9092,CONTROLLER://kafka-1:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-1:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka-1-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logcelot-network
+
+  kafka-2:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-2
+    container_name: logcelot-kafka-2
+    ports:
+      - "9093:9093"
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-2:29092,PLAINTEXT_HOST://0.0.0.0:9093,CONTROLLER://kafka-2:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-2:29092,PLAINTEXT_HOST://localhost:9093'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9093"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logcelot-network
+
+  kafka-3:
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka-3
+    container_name: logcelot-kafka-3
+    ports:
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka-1:29093,2@kafka-2:29093,3@kafka-3:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka-3:29092,PLAINTEXT_HOST://0.0.0.0:9094,CONTROLLER://kafka-3:29093'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka-3:29092,PLAINTEXT_HOST://localhost:9094'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+
+      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+      KAFKA_MIN_INSYNC_REPLICAS: 2
+
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9094"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logcelot-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: logcelot-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: logcelot-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_CLUSTERS_0_METRICS_PORT: 9997
+      DYNAMIC_CONFIG_ENABLED: 'true'
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+    networks:
+      - logcelot-network
+
+  keeper-01:
+    image: clickhouse/clickhouse-keeper:23.8
+    hostname: keeper-01
+    container_name: logcelot-keeper-01
+    ports:
+      - "9181:9181"
+    volumes:
+      - keeper-01-data:/var/lib/clickhouse
+      - ./infrastructure/clickhouse/keeper-01.xml:/etc/clickhouse-keeper/keeper_config.xml
+    healthcheck:
+      test: ["CMD", "clickhouse-keeper-client", "--port", "9181", "--query", "ruok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - logcelot-network
+
+  keeper-02:
+    image: clickhouse/clickhouse-keeper:23.8
+    hostname: keeper-02
+    container_name: logcelot-keeper-02
+    ports:
+      - "9182:9181"
+    volumes:
+      - keeper-02-data:/var/lib/clickhouse
+      - ./infrastructure/clickhouse/keeper-02.xml:/etc/clickhouse-keeper/keeper_config.xml
+    healthcheck:
+      test: ["CMD", "clickhouse-keeper-client", "--port", "9181", "--query", "ruok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - logcelot-network
+
+  keeper-03:
+    image: clickhouse/clickhouse-keeper:23.8
+    hostname: keeper-03
+    container_name: logcelot-keeper-03
+    ports:
+      - "9183:9181"
+    volumes:
+      - keeper-03-data:/var/lib/clickhouse
+      - ./infrastructure/clickhouse/keeper-03.xml:/etc/clickhouse-keeper/keeper_config.xml
+    healthcheck:
+      test: ["CMD", "clickhouse-keeper-client", "--port", "9181", "--query", "ruok"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - logcelot-network
+
+  clickhouse-01:
+    image: clickhouse/clickhouse-server:23.8
+    hostname: clickhouse-01
+    container_name: logcelot-clickhouse-01
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-01-data:/var/lib/clickhouse
+      - ./infrastructure/clickhouse/init-ha.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infrastructure/clickhouse/config-node-01.xml:/etc/clickhouse-server/config.d/cluster.xml
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      keeper-01:
+        condition: service_healthy
+      keeper-02:
+        condition: service_healthy
+      keeper-03:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logcelot-network
+
+  clickhouse-02:
+    image: clickhouse/clickhouse-server:23.8
+    hostname: clickhouse-02
+    container_name: logcelot-clickhouse-02
+    ports:
+      - "8124:8123"
+      - "9001:9000"
+    environment:
+      CLICKHOUSE_DB: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-02-data:/var/lib/clickhouse
+      # FIX: HA schema must be init-ha.sql
+      - ./infrastructure/clickhouse/init-ha.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infrastructure/clickhouse/config-node-02.xml:/etc/clickhouse-server/config.d/cluster.xml
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      keeper-01:
+        condition: service_healthy
+      keeper-02:
+        condition: service_healthy
+      keeper-03:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logcelot-network
+
+
+  clickhouse-lb:
+    image: nginx:alpine
+    hostname: clickhouse-lb
+    container_name: logcelot-clickhouse-lb
+    ports:
+      - "8125:8123"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - clickhouse-01
+      - clickhouse-02
+    healthcheck:
+      # FIX: valid curl command (no markdown link). [web:285]
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8123/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - logcelot-network
+
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logcelot-api-1
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_TOPIC_LOGS: logs.raw
+      KAFKA_TOPIC_DLQ: logs.dead_letter
+      KAFKA_COMPRESSION_TYPE: gzip
+      KAFKA_ACKS: 1
+
+      CLICKHOUSE_HOST: clickhouse-lb
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_HTTP_PORT: 8123
+      CLICKHOUSE_DATABASE: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+
+      # New settings (optional, but explicit)
+      CLICKHOUSE_LOGS_TABLE: logs
+      CLICKHOUSE_ASYNC_INSERT: "true"
+      CLICKHOUSE_WAIT_FOR_ASYNC_INSERT: "true"
+
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+      API_WORKERS: 4
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      clickhouse-lb:
+        condition: service_healthy
+    command: python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logcelot-worker-1
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      WORKER_ID: worker-1
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_TOPIC_LOGS: logs.raw
+      KAFKA_TOPIC_DLQ: logs.dead_letter
+      KAFKA_CONSUMER_GROUP: logcelot-consumer
+
+      CLICKHOUSE_HOST: clickhouse-lb
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_HTTP_PORT: 8123
+      CLICKHOUSE_DATABASE: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+
+      CLICKHOUSE_LOGS_TABLE: logs
+      CLICKHOUSE_ASYNC_INSERT: "true"
+      CLICKHOUSE_WAIT_FOR_ASYNC_INSERT: "true"
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      clickhouse-lb:
+        condition: service_healthy
+    command: python -m src.worker
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logcelot-worker-2
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      WORKER_ID: worker-2
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_TOPIC_LOGS: logs.raw
+      KAFKA_TOPIC_DLQ: logs.dead_letter
+      KAFKA_CONSUMER_GROUP: logcelot-consumer
+
+      CLICKHOUSE_HOST: clickhouse-lb
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_HTTP_PORT: 8123
+      CLICKHOUSE_DATABASE: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+
+      CLICKHOUSE_LOGS_TABLE: logs
+      CLICKHOUSE_ASYNC_INSERT: "true"
+      CLICKHOUSE_WAIT_FOR_ASYNC_INSERT: "true"
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      clickhouse-lb:
+        condition: service_healthy
+    command: python -m src.worker
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  worker-3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logcelot-worker-3
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: INFO
+      WORKER_ID: worker-3
+
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_TOPIC_LOGS: logs.raw
+      KAFKA_TOPIC_DLQ: logs.dead_letter
+      KAFKA_CONSUMER_GROUP: logcelot-consumer
+
+      CLICKHOUSE_HOST: clickhouse-lb
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_HTTP_PORT: 8123
+      CLICKHOUSE_DATABASE: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+
+      CLICKHOUSE_LOGS_TABLE: logs
+      CLICKHOUSE_ASYNC_INSERT: "true"
+      CLICKHOUSE_WAIT_FOR_ASYNC_INSERT: "true"
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+      clickhouse-lb:
+        condition: service_healthy
+    command: python -m src.worker
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: logcelot-kafka-exporter
+    ports:
+      - "9308:9308"
+    command:
+      - '--kafka.server=kafka-1:29092'
+      - '--kafka.server=kafka-2:29092'
+      - '--kafka.server=kafka-3:29092'
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+
+  clickhouse-exporter:
+    image: f1yegor/clickhouse-exporter:latest
+    container_name: logcelot-clickhouse-exporter
+    ports:
+      - "9116:9116"
+    command:
+      - '-scrape_uri=http://clickhouse-lb:8123/'
+    depends_on:
+      - clickhouse-lb
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: logcelot-blackbox-exporter
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./infrastructure/prometheus/blackbox.yml:/etc/blackbox_exporter/config.yml
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: logcelot-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - kafka-exporter
+      - clickhouse-exporter
+      - blackbox-exporter
+    networks:
+      - logcelot-network
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: logcelot-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  postgres-airflow:
+    image: postgres:15
+    hostname: postgres-airflow
+    container_name: logcelot-postgres-airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-airflow-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logcelot-network
+
+
+  airflow-init:
+    build:
+      context: .
+      dockerfile: infrastructure/airflow/Dockerfile
+    container_name: logcelot-airflow-init
+    env_file:
+      - infrastructure/airflow/airflow.env
+    environment:
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+    networks:
+      - logcelot-network
+    command: >
+      bash -c "airflow db migrate &&
+               airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@logcelot.local"
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: infrastructure/airflow/Dockerfile
+    hostname: airflow-webserver
+    container_name: logcelot-airflow-webserver
+    ports:
+      - "8081:8080"
+    env_file:
+      - infrastructure/airflow/airflow.env
+    volumes:
+      - ./infrastructure/airflow/dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logcelot-network
+    command: webserver
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: infrastructure/airflow/Dockerfile
+    hostname: airflow-scheduler
+    container_name: logcelot-airflow-scheduler
+    env_file:
+      - infrastructure/airflow/airflow.env
+    volumes:
+      - ./infrastructure/airflow/dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      postgres-airflow:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "airflow-scheduler"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logcelot-network
+    command: scheduler
+
+
+  log-generator:
+    build:
+      context: .
+      dockerfile: infrastructure/generator/Dockerfile
+    container_name: logcelot-log-generator
+    ports:
+      - "8082:8082"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka-1:29092,kafka-2:29092,kafka-3:29092
+      KAFKA_TOPIC: logs.raw
+      GENERATOR_RPS: 100
+      GENERATOR_SCENARIO: normal
+      GENERATOR_API_HOST: 0.0.0.0
+      GENERATOR_API_PORT: 8082
+    depends_on:
+      kafka-1:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+  # ============================================================
+  # Apache Superset - Analytical Dashboards
+  # ============================================================
+
+  postgres-superset:
+    image: postgres:15
+    hostname: postgres-superset
+    container_name: logcelot-postgres-superset
+    environment:
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+      POSTGRES_DB: superset
+    volumes:
+      - postgres-superset-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "superset"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logcelot-network
+
+  superset:
+    build:
+      context: ./infrastructure/superset
+      dockerfile: Dockerfile
+    hostname: superset
+    container_name: logcelot-superset
+    ports:
+      - "8088:8088"
+    environment:
+      # Superset settings
+      SUPERSET_SECRET_KEY: 'logcelot_superset_secret_key_change_in_production'
+      SUPERSET_LOAD_EXAMPLES: 'no'
+      
+      # PostgreSQL connection for Superset metadata (ГЛАВНОЕ!)
+      SQLALCHEMY_DATABASE_URI: 'postgresql://superset:superset@postgres-superset:5432/superset'
+      DATABASE_DIALECT: postgresql
+      DATABASE_USER: superset
+      DATABASE_PASSWORD: superset
+      DATABASE_HOST: postgres-superset
+      DATABASE_PORT: 5432
+      DATABASE_DB: superset
+      
+      # ClickHouse connection info (для вывода в логах)
+      CLICKHOUSE_HOST: clickhouse-lb
+      CLICKHOUSE_PORT: 8123
+      CLICKHOUSE_DB: logcelot
+      CLICKHOUSE_USER: logcelot_user
+      CLICKHOUSE_PASSWORD: logcelot_pass
+    volumes:
+      - superset-data:/app/superset_home
+    depends_on:
+      postgres-superset:
+        condition: service_healthy
+      clickhouse-lb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - logcelot-network
+    restart: unless-stopped
+
+
+networks:
+  logcelot-network:
+    driver: bridge
+    name: logcelot-network
+
+
+volumes:
+  kafka-1-data:
+    name: logcelot-kafka-1-data
+  kafka-2-data:
+    name: logcelot-kafka-2-data
+  kafka-3-data:
+    name: logcelot-kafka-3-data
+
+  keeper-01-data:
+    name: logcelot-keeper-01-data
+  keeper-02-data:
+    name: logcelot-keeper-02-data
+  keeper-03-data:
+    name: logcelot-keeper-03-data
+
+  clickhouse-01-data:
+    name: logcelot-clickhouse-01-data
+  clickhouse-02-data:
+    name: logcelot-clickhouse-02-data
+
+  prometheus-data:
+    name: logcelot-prometheus-data
+  grafana-data:
+    name: logcelot-grafana-data
+
+  postgres-airflow-data:
+    name: logcelot-postgres-airflow-data
+  airflow-logs:
+    name: logcelot-airflow-logs
+
+  postgres-superset-data:
+    name: logcelot-postgres-superset-data
+  superset-data:
+    name: logcelot-superset-data

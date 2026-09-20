@@ -1,0 +1,1535 @@
+{
+  "collection": {
+    "info": {
+      "_postman_id": "536f70a9-2c3f-4ba7-8552-8a276855744f",
+      "name": "Logcelot API - Log Collection System"
+      "description": "Complete API collection for Logcelot log collection system (Kappa Architecture).\n\n**Features:**\n- Async log ingestion (Kafka)\n- Multiple formats: JSON, Syslog RFC5424, CLF\n- Full-text search with filters\n- ClickHouse storage with HA\n- Prometheus metrics\n\n**Quick Start:**\n1. Start infrastructure: `make up`\n2. Wait 30 seconds for services to be healthy\n3. Run folder: `0 - Setup` (health check)\n4. Run folder: `1 - Ingestion` (valid logs)\n5. Wait 5-10 seconds for consumer processing\n6. Run folder: `3 - Search` (query logs)\n\n**Base URL:** http://localhost:8000\n**Swagger:** http://localhost:8000/docs\n**Grafana:** http://localhost:3000 (admin/admin)",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+      "createdAt": "2026-01-23T21:01:40.000Z",
+      "updatedAt": "2026-01-23T21:27:46.000Z",
+      "lastUpdatedBy": "19946362",
+      "uid": "19946362-536f70a9-2c3f-4ba7-8552-8a276855744f"
+    },
+    "item": [
+      {
+        "name": "0. Setup",
+        "item": [
+          {
+            "name": "API Root",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test('Response is JSON', () =\u003E {",
+                    "  pm.response.to.be.json;",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Has message', () =\u003E {",
+                    "  pm.expect(data).to.have.property('message');",
+                    "  pm.expect(data.message).to.include('Logcelot');",
+                    "});",
+                    "",
+                    "pm.test('Has version', () =\u003E {",
+                    "  pm.expect(data).to.have.property('version');",
+                    "});",
+                    "",
+                    "pm.test('Architecture is Kappa', () =\u003E {",
+                    "  pm.expect(data).to.have.property('architecture');",
+                    "  pm.expect(data.architecture).to.include('Kappa');",
+                    "});"
+                  ],
+                  "id": "3700fbff-1a7f-42f5-93e7-913098e17698"
+                }
+              }
+            ],
+            "id": "727d2f67-2914-4b14-a406-a664fb92748a",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  ""
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-727d2f67-2914-4b14-a406-a664fb92748a"
+          },
+          {
+            "name": "Health Check",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200 or 503', () =\u003E {",
+                    "  pm.expect([200, 503]).to.include(pm.response.code);",
+                    "});",
+                    "",
+                    "pm.test('Response is JSON', () =\u003E {",
+                    "  pm.response.to.be.json;",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Has service name', () =\u003E {",
+                    "  pm.expect(data).to.have.property('service');",
+                    "  pm.expect(data.service).to.eql('logcelot-api');",
+                    "});",
+                    "",
+                    "pm.test('Has status', () =\u003E {",
+                    "  pm.expect(data).to.have.property('status');",
+                    "  pm.expect(['healthy', 'degraded']).to.include(data.status);",
+                    "});",
+                    "",
+                    "pm.test('Has Kafka status', () =\u003E {",
+                    "  pm.expect(data).to.have.property('kafka');",
+                    "});",
+                    "",
+                    "pm.test('Has ClickHouse status', () =\u003E {",
+                    "  pm.expect(data).to.have.property('clickhouse');",
+                    "});",
+                    "",
+                    "if (pm.response.code === 200) {",
+                    "  console.log('All systems healthy');",
+                    "} else {",
+                    "  console.log('System degraded:', data);",
+                    "}"
+                  ],
+                  "id": "548e47a5-6402-49b5-a8ae-6e4688f169e4"
+                }
+              }
+            ],
+            "id": "59520999-cb24-4a87-ba82-279fa480c39c",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/health",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "health"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-59520999-cb24-4a87-ba82-279fa480c39c"
+          },
+          {
+            "name": "Prometheus Metrics",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test('Response is Prometheus format', () =\u003E {",
+                    "  pm.expect(pm.response.text()).to.include('# TYPE');",
+                    "  pm.expect(pm.response.text()).to.include('logcelot_');",
+                    "});"
+                  ],
+                  "id": "c52fcb64-8d79-46a5-8438-52b22c569587"
+                }
+              }
+            ],
+            "id": "f385108c-7f5d-4d88-a86d-5d5b0882f3ce",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/metrics",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "metrics"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-f385108c-7f5d-4d88-a86d-5d5b0882f3ce"
+          }
+        ],
+        "id": "1678c9b5-b9d4-49de-bbbe-e9ed33fd8940",
+        "description": "Service status and health checks",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:36:40.000Z",
+        "uid": "19946362-1678c9b5-b9d4-49de-bbbe-e9ed33fd8940"
+      },
+      {
+        "name": "1.1 Ingestion (JSON)",
+        "item": [
+          {
+            "name": "Single INFO log",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202 Accepted', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "pm.test('Response is JSON', () =\u003E {",
+                    "  pm.response.to.be.json;",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Status is queued', () =\u003E {",
+                    "  pm.expect(data.status).to.eql('queued');",
+                    "});",
+                    "",
+                    "pm.test('Count is 1', () =\u003E {",
+                    "  pm.expect(data.count).to.eql(1);",
+                    "});",
+                    "",
+                    "pm.test('Has Kafka metadata', () =\u003E {",
+                    "  pm.expect(data).to.have.property('kafka_topic');",
+                    "  pm.expect(data).to.have.property('kafka_partition');",
+                    "  pm.expect(data).to.have.property('kafka_offset');",
+                    "  pm.expect(data).to.have.property('log_id');",
+                    "});",
+                    "",
+                    "console.log('Log queued:', data);"
+                  ],
+                  "id": "739a0991-fbb4-477f-9e81-54293d6caac7"
+                }
+              }
+            ],
+            "id": "80ca3597-56fc-4a4a-8790-cafa5932876e",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"payment-service\",\n  \"level\": \"INFO\",\n  \"message\": \"Payment processed successfully\",\n  \"payload\": {\n    \"user_id\": \"12345\",\n    \"amount\": 99.99,\n    \"currency\": \"USD\",\n    \"transaction_id\": \"txn_abc123\",\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-80ca3597-56fc-4a4a-8790-cafa5932876e"
+          },
+          {
+            "name": "Single ERROR log",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "pm.test('Status is queued', () =\u003E {",
+                    "  pm.expect(data.status).to.eql('queued');",
+                    "});"
+                  ],
+                  "id": "364ba260-2480-43c9-9396-4dd987691c91"
+                }
+              }
+            ],
+            "id": "0ddfd901-2dc6-45f6-8483-1a0c5c61a8ff",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"payment-service\",\n  \"level\": \"ERROR\",\n  \"message\": \"Payment processing failed: database timeout\",\n  \"payload\": {\n    \"user_id\": \"67890\",\n    \"error_type\": \"DatabaseTimeoutException\",\n    \"http_status_code\": 504,\n    \"duration_ms\": 5000,\n    \"trace_id\": \"{{trace_id}}\",\n    \"stack_trace\": \"at PaymentProcessor.process()\\n  at PaymentController.handleRequest()\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-0ddfd901-2dc6-45f6-8483-1a0c5c61a8ff"
+          },
+          {
+            "name": "Single WARN log (normalized)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "console.log('WARNING normalized to WARN in storage');"
+                  ],
+                  "id": "bb39c8aa-0560-460b-aade-d9b8581c862f"
+                }
+              }
+            ],
+            "id": "e999e8c9-5b82-4077-aa3e-4515b71918c8",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"auth-service\",\n  \"level\": \"WARNING\",\n  \"message\": \"Multiple failed login attempts detected\",\n  \"payload\": {\n    \"user_id\": \"11111\",\n    \"ip_address\": \"192.168.1.100\",\n    \"attempts\": 5,\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-e999e8c9-5b82-4077-aa3e-4515b71918c8"
+          },
+          {
+            "name": "Single DEBUG log",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});"
+                  ],
+                  "id": "99f927e6-ac65-49a4-b88b-b2bf4e4e271f"
+                }
+              }
+            ],
+            "id": "7a553215-13f0-4c57-a7c2-19d1715d7061",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"cache-service\",\n  \"level\": \"DEBUG\",\n  \"message\": \"Cache hit: user_profile_12345\",\n  \"payload\": {\n    \"cache_key\": \"user_profile_12345\",\n    \"ttl_seconds\": 300,\n    \"trace_id\": \"{{trace_id}}\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-7a553215-13f0-4c57-a7c2-19d1715d7061"
+          }
+        ],
+        "id": "709e0c85-af9a-4bbb-a91f-cc54069db7cf",
+        "description": "Valid JSON log ingestion",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:36:23.000Z",
+        "uid": "19946362-709e0c85-af9a-4bbb-a91f-cc54069db7cf"
+      },
+      {
+        "name": "1.2 Ingestion (Batch)",
+        "item": [
+          {
+            "name": "Batch Mixed Levels (5 logs)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Status is queued', () =\u003E {",
+                    "  pm.expect(data.status).to.eql('queued');",
+                    "});",
+                    "",
+                    "pm.test('Count is 5', () =\u003E {",
+                    "  pm.expect(data.count).to.eql(5);",
+                    "});",
+                    "",
+                    "console.log('Batch queued:', data.count, 'logs');"
+                  ],
+                  "id": "adf4183a-7593-4117-82df-381125a3309e"
+                }
+              }
+            ],
+            "id": "16ce5242-cb11-4a55-9bbe-1b277052434c",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"logs\": [\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"INFO\",\n      \"message\": \"Request received: GET /api/users\",\n      \"payload\": {\n        \"http_method\": \"GET\",\n        \"http_path\": \"/api/users\",\n        \"http_status_code\": 200,\n        \"duration_ms\": 45,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"INFO\",\n      \"message\": \"Request received: POST /api/orders\",\n      \"payload\": {\n        \"http_method\": \"POST\",\n        \"http_path\": \"/api/orders\",\n        \"http_status_code\": 201,\n        \"duration_ms\": 120,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"api-gateway\",\n      \"level\": \"ERROR\",\n      \"message\": \"Request failed: GET /api/products/999\",\n      \"payload\": {\n        \"http_method\": \"GET\",\n        \"http_path\": \"/api/products/999\",\n        \"http_status_code\": 404,\n        \"error_type\": \"ResourceNotFoundException\",\n        \"duration_ms\": 15,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"worker-service\",\n      \"level\": \"WARN\",\n      \"message\": \"Task execution slow: process_order\",\n      \"payload\": {\n        \"task_name\": \"process_order\",\n        \"duration_ms\": 3500,\n        \"threshold_ms\": 1000,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    },\n    {\n      \"source\": \"http\",\n      \"source_service\": \"cache-service\",\n      \"level\": \"DEBUG\",\n      \"message\": \"Cache hit: user_profile_12345\",\n      \"payload\": {\n        \"cache_key\": \"user_profile_12345\",\n        \"ttl_seconds\": 300,\n        \"trace_id\": \"{{trace_id}}\"\n      }\n    }\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/batch",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "batch"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-16ce5242-cb11-4a55-9bbe-1b277052434c"
+          },
+          {
+            "name": "Batch Large (100 logs)",
+            "event": [
+              {
+                "listen": "prerequest",
+                "script": {
+                  "id": "067bb572-9ef1-45db-9b06-7cdddeacfc11",
+                  "exec": [
+                    "// Generate 100 logs dynamically",
+                    "const logs = [];",
+                    "for (let i = 0; i \u003C 100; i++) {",
+                    "  logs.push({",
+                    "    source: 'http',",
+                    "    source_service: 'load-test-service',",
+                    "    level: 'INFO',",
+                    "    message: `Load test log entry ${i}`,",
+                    "    payload: {",
+                    "      index: i,",
+                    "      timestamp: new Date().toISOString(),",
+                    "      trace_id: pm.variables.get('trace_id')",
+                    "    }",
+                    "  });",
+                    "}",
+                    "",
+                    "pm.variables.set('batch_body', JSON.stringify({ logs }));"
+                  ],
+                  "type": "text/javascript",
+                  "packages": {
+
+                  },
+                  "requests": {
+
+                  }
+                }
+              },
+              {
+                "listen": "test",
+                "script": {
+                  "id": "39f22524-e0de-4553-b63e-d095da7fd6a5",
+                  "exec": [
+                    "const logs = [];",
+                    "for (let i = 0; i \u003C 100; i++) {",
+                    "  logs.push({",
+                    "    source: 'http',",
+                    "    source_service: 'load-test-service',",
+                    "    level: 'INFO',",
+                    "    message: `Load test log entry ${i}`,",
+                    "    payload: {",
+                    "      index: i,",
+                    "      timestamp: new Date().toISOString(),",
+                    "      trace_id: pm.variables.get('trace_id')",
+                    "    }",
+                    "  });",
+                    "}",
+                    "",
+                    "pm.variables.set('batch_body', JSON.stringify({ logs }));"
+                  ],
+                  "type": "text/javascript",
+                  "packages": {
+
+                  },
+                  "requests": {
+
+                  }
+                }
+              }
+            ],
+            "id": "bf760c9e-0e13-4fa8-89de-631ddd70a92c",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{{batch_body}}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/batch",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "batch"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:37:37.000Z",
+            "uid": "19946362-bf760c9e-0e13-4fa8-89de-631ddd70a92c"
+          }
+        ],
+        "id": "5d4e9759-9d0b-4267-98fe-d30f4f76017c",
+        "description": "Batch log ingestion (1-1000 logs)",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:36:27.000Z",
+        "uid": "19946362-5d4e9759-9d0b-4267-98fe-d30f4f76017c"
+      },
+      {
+        "name": "1.3 Ingestion (Raw)",
+        "item": [
+          {
+            "name": "Syslog RFC5424 - Single",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "pm.test('Status is queued', () =\u003E {",
+                    "  pm.expect(data.status).to.eql('queued');",
+                    "});",
+                    "",
+                    "console.log('Syslog parsed and queued');"
+                  ],
+                  "id": "2935980d-9af9-4426-afc0-65ebfb424e13"
+                }
+              }
+            ],
+            "id": "ab2ba1a1-0ab2-4eb4-9290-e982d212f903",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "\u003C134\u003E1 2026-01-23T12:00:00.000Z webserver01.example.com nginx 1234 - - User login successful"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/raw?format=syslog&source_service=nginx-webserver",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "raw"
+                ],
+                "query": [
+                  {
+                    "key": "format",
+                    "value": "syslog"
+                  },
+                  {
+                    "key": "source_service",
+                    "value": "nginx-webserver"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-ab2ba1a1-0ab2-4eb4-9290-e982d212f903"
+          },
+          {
+            "name": "CLF - Success Request",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "pm.test('Status is queued', () =\u003E {",
+                    "  pm.expect(data.status).to.eql('queued');",
+                    "});",
+                    "",
+                    "console.log('CLF parsed and queued');"
+                  ],
+                  "id": "3b4a73d1-331c-4aa7-95b7-729653799949"
+                }
+              }
+            ],
+            "id": "e6db6109-b0a1-479e-bd21-eb7be9efd641",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "192.168.1.100 - john [23/Jan/2026:12:00:00 +0000] \"GET /api/users HTTP/1.1\" 200 1234"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/raw?format=clf&source_service=apache-webserver",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "raw"
+                ],
+                "query": [
+                  {
+                    "key": "format",
+                    "value": "clf"
+                  },
+                  {
+                    "key": "source_service",
+                    "value": "apache-webserver"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-e6db6109-b0a1-479e-bd21-eb7be9efd641"
+          },
+          {
+            "name": "CLF - Error Request (404)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 202', () =\u003E {",
+                    "  pm.response.to.have.status(202);",
+                    "});"
+                  ],
+                  "id": "a21068ba-b9a7-4cff-8297-db5eda3e6dbf"
+                }
+              }
+            ],
+            "id": "54c4ceb4-6457-4c6e-ba17-c52f1fcc647c",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "192.168.1.100 - john [23/Jan/2026:12:05:00 +0000] \"GET /api/nonexistent HTTP/1.1\" 404 512"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/raw?format=clf&source_service=apache-webserver",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "raw"
+                ],
+                "query": [
+                  {
+                    "key": "format",
+                    "value": "clf"
+                  },
+                  {
+                    "key": "source_service",
+                    "value": "apache-webserver"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-54c4ceb4-6457-4c6e-ba17-c52f1fcc647c"
+          }
+        ],
+        "id": "4bc5c6d8-04b3-418c-b1d1-83748989c362",
+        "description": "Syslog RFC5424 and CLF format ingestion",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:36:33.000Z",
+        "uid": "19946362-4bc5c6d8-04b3-418c-b1d1-83748989c362"
+      },
+      {
+        "name": "2 Ingestion (с ошибками)",
+        "item": [
+          {
+            "name": "Invalid - Missing required fields",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 422 Unprocessable Entity', () =\u003E {",
+                    "  pm.response.to.have.status(422);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "pm.test('Has validation detail', () =\u003E {",
+                    "  pm.expect(data).to.have.property('detail');",
+                    "});",
+                    "",
+                    "console.log('Validation failed (expected):', data.detail);"
+                  ],
+                  "id": "d09a4e7f-32c0-47b4-ade6-2477a1b12548"
+                }
+              }
+            ],
+            "id": "f72a9527-71f7-4714-b367-02ea9a1ff574",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-f72a9527-71f7-4714-b367-02ea9a1ff574"
+          },
+          {
+            "name": "Invalid - Level not allowed",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 422', () =\u003E {",
+                    "  pm.response.to.have.status(422);",
+                    "});"
+                  ],
+                  "id": "6efc3a32-8957-4ba0-8760-00383b89f376"
+                }
+              }
+            ],
+            "id": "5d47f00e-9d6f-4450-b06c-af4a55659fec",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"test-api\",\n  \"level\": \"INVALID_LEVEL\",\n  \"message\": \"Test message\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-5d47f00e-9d6f-4450-b06c-af4a55659fec"
+          },
+          {
+            "name": "Invalid - Payload wrong type",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 422', () =\u003E {",
+                    "  pm.response.to.have.status(422);",
+                    "});"
+                  ],
+                  "id": "1e3d405e-8f5e-408a-8d27-953b7ee7dcfc"
+                }
+              }
+            ],
+            "id": "026b2195-d483-48e9-b0f3-12b6e306a219",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"source\": \"http\",\n  \"source_service\": \"test-api\",\n  \"level\": \"INFO\",\n  \"message\": \"Test\",\n  \"payload\": \"not-a-dict-should-be-object\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-026b2195-d483-48e9-b0f3-12b6e306a219"
+          },
+          {
+            "name": "Invalid - Empty batch",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 422', () =\u003E {",
+                    "  pm.response.to.have.status(422);",
+                    "});"
+                  ],
+                  "id": "2e36c0c7-bde0-4a10-8acc-815febe3f400"
+                }
+              }
+            ],
+            "id": "0a48e9ba-85a2-4995-82c2-e8d3c7563093",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"logs\": []\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/batch",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "batch"
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-0a48e9ba-85a2-4995-82c2-e8d3c7563093"
+          },
+          {
+            "name": "Invalid - Malformed Syslog",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 400 Bad Request', () =\u003E {",
+                    "  pm.response.to.have.status(400);",
+                    "});",
+                    "",
+                    "console.log('Parse error (expected) - message sent to DLQ');"
+                  ],
+                  "id": "5fa141a3-0b39-4640-9787-97c2fa56ea50"
+                }
+              }
+            ],
+            "id": "e80a2216-607d-45b2-bac8-52cb2a935010",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "This is not a valid syslog message at all"
+              },
+              "url": {
+                "raw": "{{base_url}}/logs/raw?format=syslog",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "raw"
+                ],
+                "query": [
+                  {
+                    "key": "format",
+                    "value": "syslog"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-e80a2216-607d-45b2-bac8-52cb2a935010"
+          }
+        ],
+        "id": "0969685c-a84c-4d26-abf3-e03b4b8dabd2",
+        "description": "Negative test cases for validation",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:28:50.000Z",
+        "uid": "19946362-0969685c-a84c-4d26-abf3-e03b4b8dabd2"
+      },
+      {
+        "name": "3. Поиск",
+        "item": [
+          {
+            "name": "Search - All logs (default)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test('Response is JSON', () =\u003E {",
+                    "  pm.response.to.be.json;",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Has total', () =\u003E {",
+                    "  pm.expect(data).to.have.property('total');",
+                    "});",
+                    "",
+                    "pm.test('Has items array', () =\u003E {",
+                    "  pm.expect(data).to.have.property('items');",
+                    "  pm.expect(data.items).to.be.an('array');",
+                    "});",
+                    "",
+                    "pm.test('Has query_time_ms', () =\u003E {",
+                    "  pm.expect(data).to.have.property('query_time_ms');",
+                    "});",
+                    "",
+                    "console.log(`Found ${data.total} logs, returned ${data.items.length} items in ${data.query_time_ms}ms`);"
+                  ],
+                  "id": "ca641154-2e43-448e-ac81-0e9c684be7d6"
+                }
+              }
+            ],
+            "id": "cfaee3f2-29a5-40b8-b281-2851af5eaf87",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?limit=20",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "limit",
+                    "value": "20"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-cfaee3f2-29a5-40b8-b281-2851af5eaf87"
+          },
+          {
+            "name": "Search - Filter by service",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('All results are from payment-service', () =\u003E {",
+                    "  data.items.forEach(item =\u003E {",
+                    "    pm.expect(item.source_service).to.eql('payment-service');",
+                    "  });",
+                    "});",
+                    "",
+                    "console.log(`Found ${data.total} logs from payment-service`);"
+                  ],
+                  "id": "4003037c-6c3d-4723-971f-a8d2ab5173d0"
+                }
+              }
+            ],
+            "id": "7608e32e-f10a-4242-a890-33173bae54e3",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?source_service=payment-service&limit=50",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "source_service",
+                    "value": "payment-service"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "50"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-7608e32e-f10a-4242-a890-33173bae54e3"
+          },
+          {
+            "name": "Search - Filter by level (ERROR)",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('All results are ERROR level', () =\u003E {",
+                    "  data.items.forEach(item =\u003E {",
+                    "    pm.expect(item.level).to.eql('ERROR');",
+                    "  });",
+                    "});",
+                    "",
+                    "console.log(`Found ${data.total} ERROR logs`);"
+                  ],
+                  "id": "3e0dbbc6-875f-406c-984f-4a9985e914fd"
+                }
+              }
+            ],
+            "id": "8927b918-48d8-46a8-8a10-657d8bcf844b",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?level=ERROR&limit=100",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "level",
+                    "value": "ERROR"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "100"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-8927b918-48d8-46a8-8a10-657d8bcf844b"
+          },
+          {
+            "name": "Search - Full-text search",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Results contain search term', () =\u003E {",
+                    "  data.items.forEach(item =\u003E {",
+                    "    const found = item.message.toLowerCase().includes('payment') || ",
+                    "                  item.source_service.toLowerCase().includes('payment');",
+                    "    pm.expect(found).to.be.true;",
+                    "  });",
+                    "});",
+                    "",
+                    "console.log(`Full-text search found ${data.total} results`);"
+                  ],
+                  "id": "90254967-dcb9-41cc-9805-7d1ba1a74e38"
+                }
+              }
+            ],
+            "id": "c2d5e09e-2290-4cbd-8f43-b387da7da335",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?query=payment&limit=50",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "query",
+                    "value": "payment"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "50"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-c2d5e09e-2290-4cbd-8f43-b387da7da335"
+          },
+          {
+            "name": "Search - By trace_id",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Results are for same trace', () =\u003E {",
+                    "  const traceId = pm.variables.get('trace_id');",
+                    "  data.items.forEach(item =\u003E {",
+                    "    pm.expect(item.trace_id).to.eql(traceId);",
+                    "  });",
+                    "});",
+                    "",
+                    "console.log(`Trace distributed across ${data.total} logs`);"
+                  ],
+                  "id": "348af051-af5c-4152-a46f-28e06aa6b646"
+                }
+              }
+            ],
+            "id": "72761506-33ea-45fc-863b-66ba10c7bda6",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?trace_id={{trace_id}}&limit=100",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "trace_id",
+                    "value": "{{trace_id}}"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "100"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-72761506-33ea-45fc-863b-66ba10c7bda6"
+          },
+          {
+            "name": "Search - Combined filters",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "console.log(`Combined filters found ${data.total} results`);"
+                  ],
+                  "id": "cdf07c7d-b752-41e5-9d10-014b60485a2f"
+                }
+              }
+            ],
+            "id": "58dc3180-7717-4e45-980b-41511867091b",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?source_service=payment-service&level=ERROR&query=timeout&limit=50",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "source_service",
+                    "value": "payment-service"
+                  },
+                  {
+                    "key": "level",
+                    "value": "ERROR"
+                  },
+                  {
+                    "key": "query",
+                    "value": "timeout"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "50"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-58dc3180-7717-4e45-980b-41511867091b"
+          },
+          {
+            "name": "Search - Pagination",
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "pm.test('Status code is 200', () =\u003E {",
+                    "  pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "const data = pm.response.json();",
+                    "",
+                    "pm.test('Offset is 20', () =\u003E {",
+                    "  pm.expect(data.offset).to.eql(20);",
+                    "});",
+                    "",
+                    "pm.test('Returns up to 10 items', () =\u003E {",
+                    "  pm.expect(data.items.length).to.be.at.most(10);",
+                    "});",
+                    "",
+                    "console.log(`Page 3 (offset 20): ${data.items.length} items of ${data.total} total`);"
+                  ],
+                  "id": "318dd0f4-ef3f-4fe2-a037-6c62c2c31079"
+                }
+              }
+            ],
+            "id": "7f0b28d6-d41b-4cc5-90ed-ceff264f0cfe",
+            "protocolProfileBehavior": {
+              "disableBodyPruning": true
+            },
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/logs/search?limit=10&offset=20",
+                "host": [
+                  "{{base_url}}"
+                ],
+                "path": [
+                  "logs",
+                  "search"
+                ],
+                "query": [
+                  {
+                    "key": "limit",
+                    "value": "10"
+                  },
+                  {
+                    "key": "offset",
+                    "value": "20"
+                  }
+                ]
+              }
+            },
+            "response": [],
+            "createdAt": "2026-01-23T21:01:41.000Z",
+            "updatedAt": "2026-01-23T21:01:41.000Z",
+            "uid": "19946362-7f0b28d6-d41b-4cc5-90ed-ceff264f0cfe"
+          }
+        ],
+        "id": "43228109-2a70-420e-b571-74b91fcf9627",
+        "description": "Log search with filters and pagination",
+        "createdAt": "2026-01-23T21:01:41.000Z",
+        "updatedAt": "2026-01-23T21:28:09.000Z",
+        "uid": "19946362-43228109-2a70-420e-b571-74b91fcf9627"
+      }
+    ],
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "id": "19fd6fa5-0a65-43d0-8e5e-893e19cd51ea",
+          "type": "text/javascript",
+          "requests": {
+
+          },
+          "exec": [
+            "// Generate unique trace_id for each collection run",
+            "if (!pm.variables.has('trace_id') || !pm.variables.get('trace_id')) {",
+            "  const timestamp = Date.now();",
+            "  const random = Math.random().toString(36).substring(2, 8);",
+            "  pm.variables.set('trace_id', `trace-${timestamp}-${random}`);",
+            "  console.log('Generated trace_id:', pm.variables.get('trace_id'));",
+            "}"
+          ]
+        }
+      },
+      {
+        "listen": "test",
+        "script": {
+          "id": "1aedd129-a177-4ebe-85ca-336f7fcddba1",
+          "type": "text/javascript",
+          "packages": {
+
+          },
+          "requests": {
+
+          },
+          "exec": [
+            ""
+          ]
+        }
+      }
+    ],
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8000"
+      },
+      {
+        "key": "trace_id",
+        "value": "trace-1737671234567-a8f3d2"
+      }
+    ]
+  }
+}

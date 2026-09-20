@@ -1,0 +1,10 @@
+{"source": "file", "source_service": "auth-api", "level": "INFO", "message": "User login successful", "payload": {"user_id": "user-12345", "session_id": "sess-abc123", "ip": "192.168.1.100"}}
+{"source": "file", "source_service": "payment-api", "level": "ERROR", "message": "Payment processing failed", "payload": {"error_type": "TimeoutError", "user_id": "user-67890", "amount": 99.99, "transaction_id": "txn-xyz789"}}
+{"source": "file", "source_service": "order-api", "level": "WARN", "message": "Slow database query detected", "payload": {"query_time_ms": 1500, "query": "SELECT * FROM orders WHERE status='pending'", "table": "orders"}}
+{"source": "file", "source_service": "notification-api", "level": "INFO", "message": "Email notification sent", "payload": {"recipient": "user@example.com", "template": "order_confirmation", "delivery_time_ms": 234}}
+{"source": "file", "source_service": "inventory-api", "level": "ERROR", "message": "Stock level below threshold", "payload": {"product_sku": "PROD-12345", "current_stock": 5, "threshold": 10, "reorder_needed": true}}
+{"source": "file", "source_service": "analytics-api", "level": "INFO", "message": "Daily report generated", "payload": {"report_type": "sales", "records_processed": 15234, "duration_ms": 5678}}
+{"source": "file", "source_service": "cache-service", "level": "WARN", "message": "Cache eviction triggered", "payload": {"evicted_keys": 1234, "cache_size_mb": 512, "reason": "memory_pressure"}}
+{"source": "file", "source_service": "search-api", "level": "INFO", "message": "Search query executed", "payload": {"query": "laptop", "results_count": 87, "response_time_ms": 45}}
+{"source": "file", "source_service": "user-api", "level": "ERROR", "message": "Failed to update user profile", "payload": {"error_type": "ValidationError", "user_id": "user-99999", "field": "email", "reason": "invalid_format"}}
+{"source": "file", "source_service": "gateway-api", "level": "INFO", "message": "API gateway health check passed", "payload": {"upstream_services": 12, "healthy_services": 11, "response_time_ms": 23}}

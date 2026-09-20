@@ -1,0 +1,22 @@
+# ============================================================
+# Airflow Dependencies for Logcelot DLQ Triage DAG
+# ============================================================
+
+# Kafka client (sync for Airflow tasks)
+kafka-python==2.0.2
+
+# ClickHouse client
+clickhouse-connect==0.7.16
+
+# Data validation
+pydantic==2.5.3
+
+# HTTP client
+httpx==0.26.0
+
+# Logging
+structlog==24.1.0
+
+# Utilities
+python-dotenv==1.0.0
+tenacity==8.2.3
